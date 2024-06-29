@@ -2,8 +2,6 @@
 
 # fig
 
-![buildStatus](https://img.shields.io/github/workflow/status/theapache64/fig/Java%20CI%20with%20Gradle?style=plastic)
-![latestVersion](https://img.shields.io/github/v/release/theapache64/fig)
 <a href="https://twitter.com/theapache64" target="_blank">
 <img alt="Twitter: theapache64" src="https://img.shields.io/twitter/follow/theapache64.svg?style=social" />
 </a>
@@ -12,27 +10,64 @@
 
 ### ✨ Demo
 
-![](demo.gif)
+**Sheet:**
 
-## 🦿 Prerequisites
+<img src="https://github.com/theapache64/fig/assets/9678279/fb610e72-f880-4131-b9fd-0f8e255a862e" width="300"/>
 
-- Java 8 or above
+
+**Code:**
+```kotlin
+suspend fun main() {
+    val fig = Fig()
+    fig.init(sheetUrl = "https://docs.google.com/spreadsheets/d/../edit?usp=sharing") // your Google sheet URL
+    println("Fruit is '${fig.getValue("fruit", null)}'")
+}
+```
+
+**Output:**
+```
+Fruit is 'apple'
+```
 
 ## ⌨️ Usage
 
 1. Create a Google Sheet with two columns `key` and `value`
+<img src="https://github.com/theapache64/fig/assets/9678279/fb610e72-f880-4131-b9fd-0f8e255a862e" width="300"/>
+
+2. Choose "Anyone with link" and copy the link
+
+<img src="https://github.com/theapache64/fig/assets/9678279/1e789776-aabb-40c5-a7a8-97aca27108b3" width="300"/>
+
+   
 2. Add dependency
 
-**Groovy**
-
-```groovy
- implementation 'com.github.theapache64:fig:1.0.0'
- ```
-
-**Kotlin Script**
+![latestVersion](https://img.shields.io/github/v/release/theapache64/fig)
 
 ```kotlin
-implementation("com.github.theapache64:fig:1.0.0")
+implementation("com.github.theapache64:fig:0.0.1")
+```
+
+<details>
+  <summary>Groovy:</summary>
+  
+  ```groovy
+ implementation 'com.github.theapache64:fig:0.0.1'
+ ```
+</details>
+
+
+3. Use `Fig.init` and `Fig.getValue`
+
+```
+suspend fun main() {
+    val fig = Fig()
+    // need to call only once
+    fig.init(
+        sheetUrl = "YOUR-GOOGLE-SHEET-URL-GOES-HERE"
+    )
+    // getting value
+    println("Fruit is '${fig.getValue("fruit", null)}'")
+}
 ```
 
 
@@ -71,13 +106,6 @@ Give a ⭐️ if this project helped you!
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="160">
 </a>
 
-<a href="https://www.paypal.me/theapache64" target="_blank">
-    <img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" alt="Donation" width="160">
-</a>
-
-## ☑️ TODO
-
-- [ ] Task 1
 
 ## 📝 License
 
