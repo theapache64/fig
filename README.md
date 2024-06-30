@@ -1,6 +1,10 @@
 ![](cover.jpeg)
 
+
 # fig
+
+This library is under construction. The Maven coordinates given below have not been published yet. Please keep an eye on this project for latest updates
+
 
 <a href="https://twitter.com/theapache64" target="_blank">
 <img alt="Twitter: theapache64" src="https://img.shields.io/twitter/follow/theapache64.svg?style=social" />
