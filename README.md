@@ -35,45 +35,60 @@ Fruit is 'apple'
 
 ## ⌨️ Usage
 
-1. Create a Google Sheet with two columns `key` and `value`
+1. 📄 Create a Google Sheet with two columns `key` and `value`
 <img src="https://github.com/theapache64/fig/assets/9678279/fb610e72-f880-4131-b9fd-0f8e255a862e" width="300"/>
 
-2. Choose "Anyone with link" and copy the link
+2. 🔗 Choose "Anyone with link" and copy the link
 
 <img src="https://github.com/theapache64/fig/assets/9678279/1e789776-aabb-40c5-a7a8-97aca27108b3" width="300"/>
 
-   
-2. Add dependency
+
+
+3. 🤝 Add dependency
 
 ![latestVersion](https://img.shields.io/github/v/release/theapache64/fig)
 
 ```kotlin
-implementation("com.github.theapache64:fig:0.0.1")
+repositories {
+    maven { url = uri("https://jitpack.io") }
+}
+
+dependencies {
+    implementation("com.github.theapache64:fig:0.0.1")
+}
 ```
 
 <details>
   <summary>Groovy:</summary>
   
   ```groovy
- implementation 'com.github.theapache64:fig:0.0.1'
+repositories {
+    maven { url 'https://jitpack.io' } // Add jitpack
+}
+dependencies {
+    implementation 'com.github.theapache64:fig:0.0.1'
+}
  ```
 </details>
 
 
-3. Use `Fig.init` and `Fig.getValue`
 
-```
+4. ⌨️ Use `Fig.init` and `Fig.getValue`
+
+```kotlin
 suspend fun main() {
     val fig = Fig()
-    // need to call only once
-    fig.init(
-        sheetUrl = "YOUR-GOOGLE-SHEET-URL-GOES-HERE"
-    )
-    // getting value
+    fig.init(sheetUrl = "YOUR-GOOGLE-SHEET-URL-GOES-HERE")
     println("Fruit is '${fig.getValue("fruit", null)}'")
 }
 ```
 
+
+5. 💻 **Output**
+
+```
+Fruit is 'apple'
+```
 
 ## ✍️ Author
 
