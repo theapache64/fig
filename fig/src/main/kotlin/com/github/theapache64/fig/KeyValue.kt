@@ -8,5 +8,5 @@ data class KeyValue(
     @Json(name = "key")
     val key: String,
     @Json(name = "value")
-    val value: String
+    val value: String = ""
 )
