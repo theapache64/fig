@@ -56,7 +56,7 @@ class Fig  {
             if(e.message == KEY_MISSING_ERROR){
                 throw FigException("You can't use both string and int. Use `=TO_TEXT()` to convert to string")
             }else{
-                throw e
+                throw FigException(e.message ?: "Unknown error")
             }
         }
     }
