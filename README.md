@@ -3,8 +3,6 @@
 
 # fig
 
-This library is under construction. The Maven coordinates given below have not been published yet. Please keep an eye on this project for latest updates
-
 
 <a href="https://twitter.com/theapache64" target="_blank">
 <img alt="Twitter: theapache64" src="https://img.shields.io/twitter/follow/theapache64.svg?style=social" />
@@ -89,6 +87,11 @@ suspend fun main() {
 ```
 Fruit is 'apple'
 ```
+
+## 🚫 Limitations 
+- Your value field can't have two data types. To solve this always wrap your number inputs with `TO_TEXT` function. Eg: `=TO_TEXT("2.4")`
+- This library uses an unofficial Google Sheets API to fetch data, which may stop working at any time. It's best to use this library only for small projects where you need quick, dynamic values without setting up something like Firebase (and honestly, most of my projects use this library as a config source and database, so if it crashes, I'll be crying right alongside you).
+
 
 ## ✍️ Author
 
