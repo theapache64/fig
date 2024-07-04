@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import kotlin.jvm.Throws
 
 class FigException (message: String) : Exception(message)
 
@@ -17,11 +18,13 @@ class Fig  {
     }
 
     private var inMemCache: Map<String, String?>? = null
+
+    @Throws(FigException::class, JsonDataException::class)
     suspend fun init(
         sheetUrl: String
     ) = withContext(Dispatchers.IO) {
         val retrosheetInterceptor = RetrosheetInterceptor.Builder()
-            .setLogging(true)
+            .setLogging(false)
             .addSheet("Sheet1", "key", "value")
             .build()
 
@@ -60,8 +63,10 @@ class Fig  {
 
     fun getValue(key: String, defaultValue: String?): String? {
         return inMemCache.let { keyValues ->
-            require(keyValues != null) { "Fig.init not called, failed or not completed yet" }
-            keyValues[key] ?: defaultValue
+            if(keyValues == null) {
+                println("WARNING: Fig.init not called, failed or not completed yet")
+            }
+            keyValues?.get(key) ?: defaultValue
         }
     }
 }
