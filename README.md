@@ -73,13 +73,13 @@ dependencies {
 
 
 
-4. ⌨️ Use `Fig.init` and `Fig.getValue`
+4. ⌨️ Use `Fig.load` and `Fig.getXXX`
 
 ```kotlin
 suspend fun main() {
-    val fig = Fig()
-    fig.init(sheetUrl = "YOUR-GOOGLE-SHEET-URL-GOES-HERE")
-    println("Fruit is '${fig.getValue("fruit", null)}'")
+    val fig = Fig(sheetUrl = "YOUR-GOOGLE-SHEET-URL-GOES-HERE")
+    fig.load() 
+    println("Fruit is '${fig.getString("fruit", null)}'")
 }
 ```
 
