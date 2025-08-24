@@ -88,6 +88,9 @@ suspend fun main() {
 Fruit is 'apple'
 ```
 
+## ▶️ Video Tutorial
+If you want to see this library in practice, you can check out this video tutorial on YouTube: https://youtu.be/E8X94pCJ2zs 
+
 ## 🚫 Limitations 
 - Your value field can't have two data types. To solve this always wrap your number inputs with `TO_TEXT` function. Eg: `=TO_TEXT("2.4")`
 - This library uses an unofficial Google Sheets API to fetch data, which may stop working at any time. It's best to use this library only for small projects where you need quick, dynamic values without setting up something like Firebase (and honestly, most of my projects use this library as a config source and database, so if it crashes, I'll be crying right alongside you).
