@@ -52,6 +52,7 @@ repositories {
 }
 
 dependencies {
+    // [latest version - i promise!]
     implementation("com.github.theapache64:fig:0.1.0")
 }
 ```
@@ -64,6 +65,7 @@ repositories {
     maven { url 'https://jitpack.io' } // Add jitpack
 }
 dependencies {
+    // [latest version - i promise!]
     implementation 'com.github.theapache64:fig:0.1.0'
 }
  ```
