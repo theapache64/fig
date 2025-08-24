@@ -1,10 +1,11 @@
 plugins {
-    id("com.google.devtools.ksp") version "1.9.24-1.0.20"
-    kotlin("jvm") version "1.9.24"
+    id("com.google.devtools.ksp") version "2.2.10-2.0.2"
+    kotlin("jvm") version "2.2.10"
     id("maven-publish")
 }
 
 group = "com.github.theapache64.fig"
+// [latest version - i promise!]
 version = "0.0.3"
 
 
