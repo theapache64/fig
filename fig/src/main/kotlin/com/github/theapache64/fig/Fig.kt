@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import kotlin.math.roundToInt
 
 class FigException(message: String) : Exception(message)
 
@@ -23,12 +24,13 @@ class Fig {
         sheetUrl: String
     ) = withContext(Dispatchers.IO) {
         val retrosheetInterceptor =
-            RetrosheetInterceptor.Builder().setLogging(false).addSheet("Sheet1", "key", "value").build()
+            RetrosheetInterceptor.Builder().setLogging(true).addSheet("Sheet1", "key", "value").build()
 
         val okHttpClient = OkHttpClient.Builder().addInterceptor(retrosheetInterceptor) // and attach the interceptor
             .build()
 
-        val moshi = Moshi.Builder().build()
+        val moshi = Moshi.Builder()
+            .build()
 
         val url = if (sheetUrl.endsWith("edit?usp=sharing")) {
             sheetUrl.replace("edit?usp=sharing", "")
@@ -81,19 +83,20 @@ class Fig {
 
     fun getString(key: String, defaultValue: String? = null): String? {
         return getAll()?.let { keyValues ->
-            keyValues.getOrDefault(key, defaultValue)?.toString()
+            val value = keyValues.getOrDefault(key, defaultValue)
+            value?.toString()
         } ?: defaultValue
     }
 
     fun getInt(key: String, defaultValue: Int? = null): Int? {
         return getAll()?.let { keyValues ->
-            keyValues.getOrDefault(key, defaultValue)?.toString()?.toIntOrNull()
+            getAll()?.getOrDefault(key, defaultValue)?.toString()?.toDoubleOrNull()?.roundToInt()
         } ?: defaultValue
     }
 
     fun getBoolean(key: String, defaultValue: Boolean? = null): Boolean? {
         return getAll()?.let { keyValues ->
-            keyValues.getOrDefault(key, defaultValue)?.toString()?.toBoolean()
+            keyValues.getOrDefault(key, defaultValue)?.toString()?.toBooleanStrictOrNull()
         } ?: defaultValue
     }
 
