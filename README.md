@@ -20,9 +20,9 @@
 **Code:**
 ```kotlin
 suspend fun main() {
-    val fig = Fig()
-    fig.init(sheetUrl = "https://docs.google.com/spreadsheets/d/../edit?usp=sharing") // your Google sheet URL
-    println("Fruit is '${fig.getValue("fruit", null)}'")
+    val fig = Fig(sheetUrl = "https://docs.google.com/spreadsheets/d/../edit?usp=sharing") // your Google sheet URL
+    fig.load() // call this before calling any getXXX function
+    println("Fruit is '${fig.getString("fruit", null)}'")
 }
 ```
 
@@ -52,7 +52,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.theapache64:fig:0.0.3")
+    implementation("com.github.theapache64:fig:0.1.0")
 }
 ```
 
@@ -64,7 +64,7 @@ repositories {
     maven { url 'https://jitpack.io' } // Add jitpack
 }
 dependencies {
-    implementation 'com.github.theapache64:fig:0.0.3'
+    implementation 'com.github.theapache64:fig:0.1.0'
 }
  ```
 </details>

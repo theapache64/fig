@@ -9,7 +9,7 @@ class FigTest {
 
     val fig = Fig().apply {
         runBlocking {
-            init("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing")
+            load("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing")
         }
     }
 
@@ -203,7 +203,7 @@ class FigTest {
         val invalidFig = Fig()
         assertFailsWith<Exception> {
             runBlocking {
-                invalidFig.init("https://invalid-url-that-doesnt-exist.com/")
+                invalidFig.load("https://invalid-url-that-doesnt-exist.com/")
             }
         }
     }
@@ -213,7 +213,7 @@ class FigTest {
         val malformedFig = Fig()
         assertFailsWith<Exception> {
             runBlocking {
-                malformedFig.init("not-a-url")
+                malformedFig.load("not-a-url")
             }
         }
     }

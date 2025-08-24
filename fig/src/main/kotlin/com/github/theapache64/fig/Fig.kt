@@ -21,8 +21,14 @@ class FigException(message: String) : Exception(message)
  * Fig is a configuration management class that loads key-value pairs from Google Sheets.
  * It provides type-safe accessors for different data types and caches the data in memory
  * for efficient access.
+ *
+ * @param sheetUrl The public URL of the Google Sheet containing configuration data.
+ *                 The sheet should have two columns: 'key' and 'value'.
+ *                 URLs ending with "edit?usp=sharing" will be automatically converted.
  */
-class Fig {
+class Fig(
+    private val sheetUrl : String,
+) {
     companion object {
         private const val KEY_MISSING_ERROR = "Required value 'key' missing at \$[1]"
     }
@@ -33,23 +39,17 @@ class Fig {
      * Initializes the Fig instance by loading configuration data from a Google Sheet.
      * This method must be called before using any of the getter methods.
      *
-     * @param sheetUrl The public URL of the Google Sheet containing configuration data.
-     *                 The sheet should have two columns: 'key' and 'value'.
-     *                 URLs ending with "edit?usp=sharing" will be automatically converted.
-     *
      * @throws FigException If there are data type inconsistencies in the sheet or other configuration errors
      * @throws JsonDataException If there are JSON parsing errors during data retrieval
      *
      * @sample
      * ```kotlin
-     * val fig = Fig()
-     * fig.init("https://docs.google.com/spreadsheets/d/your-sheet-id/edit?usp=sharing")
+     * val fig = Fig("https://docs.google.com/spreadsheets/d/your-sheet-id/edit?usp=sharing")
+     * fig.load()
      * ```
      */
     @Throws(FigException::class, JsonDataException::class)
-    suspend fun init(
-        sheetUrl: String
-    ) = withContext(Dispatchers.IO) {
+    suspend fun load() = withContext(Dispatchers.IO) {
         val retrosheetInterceptor =
             RetrosheetInterceptor.Builder().setLogging(true).addSheet("Sheet1", "key", "value").build()
 
