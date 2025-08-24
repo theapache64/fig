@@ -6,7 +6,7 @@ plugins {
 
 group = "com.github.theapache64.fig"
 // [latest version - i promise!]
-version = "0.1.0"
+version = "0.1.1"
 
 
 repositories {
