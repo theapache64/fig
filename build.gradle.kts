@@ -22,10 +22,10 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 
     // Expekt : An assertion library for Kotlin
-    implementation("com.github.theapache64:expekt:1.0.0")
+    testImplementation("com.github.theapache64:expekt:1.0.0")
 
     // Kotlinx Coroutines Core : Coroutines support libraries for Kotlin
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }
 
 tasks.test {
