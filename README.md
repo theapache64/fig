@@ -31,6 +31,27 @@ suspend fun main() {
 Fruit is 'apple'
 ```
 
+### 🛡️ New! Reliability Demo
+
+**With Local Fallback:**
+```kotlin
+suspend fun main() {
+    val fig = Fig(
+        sheetUrl = "https://docs.google.com/spreadsheets/d/../edit?usp=sharing",
+        localFallbackPath = "config-backup.json" // Fallback when Google Sheets fails
+    )
+    fig.load() // Tries Google Sheets first, then local file
+    println("Fruit is '${fig.getString("fruit", null)}'")
+}
+```
+
+**Output:**
+```
+Fig: Failed to load from Google Sheets: Connection timeout
+Fig: Successfully loaded from local fallback: config-backup.json
+Fruit is 'apple'
+```
+
 ## ⌨️ Usage
 
 1. 📄 Create a Google Sheet with two columns `key` and `value`
@@ -83,6 +104,47 @@ suspend fun main() {
 }
 ```
 
+### 🛡️ New! Local Fallback Support
+
+For improved reliability, you can now provide a local JSON file as fallback:
+
+```kotlin
+suspend fun main() {
+    // With local fallback for reliability
+    val fig = Fig(
+        sheetUrl = "YOUR-GOOGLE-SHEET-URL", 
+        localFallbackPath = "config-backup.json"
+    )
+    fig.load() // Will try Google Sheets first, then local file if it fails
+    
+    // Or use the flexible load method
+    val fig2 = Fig(localFallbackPath = "config-backup.json")
+    fig2.load("YOUR-GOOGLE-SHEET-URL") // Same behavior
+    
+    println("App: '${fig.getString("app_name", "Default")}'")
+}
+```
+
+### 📤 Export Configuration
+
+Create local backups from your Google Sheets:
+
+```kotlin
+suspend fun main() {
+    val fig = Fig("YOUR-GOOGLE-SHEET-URL")
+    fig.load()
+    
+    // Export current config to local file
+    fig.exportToLocalFile("config-backup.json")
+    
+    // Now you can use this file as fallback
+    val figWithFallback = Fig(
+        sheetUrl = "YOUR-GOOGLE-SHEET-URL",
+        localFallbackPath = "config-backup.json" 
+    )
+}
+```
+
 
 5. 💻 **Output**
 
@@ -96,6 +158,26 @@ If you want to see this library in practice, you can check out this video tutori
 ## 🚫 Limitations 
 - Your value field can't have two data types. To solve this always wrap your number inputs with `TO_TEXT` function. Eg: `=TO_TEXT("2.4")`
 - This library uses an unofficial Google Sheets API to fetch data, which may stop working at any time. It's best to use this library only for small projects where you need quick, dynamic values without setting up something like Firebase (and honestly, most of my projects use this library as a config source and database, so if it crashes, I'll be crying right alongside you).
+
+## 🛡️ New! Reliability Features
+
+**Local Fallback Support**: The main limitation above is now addressed! You can provide a local JSON file as fallback when Google Sheets is unavailable:
+
+- ✅ **Offline capability**: Works without internet connection
+- ✅ **Production ready**: Guaranteed config availability 
+- ✅ **Version control friendly**: Local config files can be committed to git
+- ✅ **Easy backup creation**: Export from Google Sheets to create fallback files
+- ✅ **Zero breaking changes**: Fully backward compatible
+
+**Example local config file** (`config.json`):
+```json
+{
+  "app_name": "My App",
+  "version_code": 42,
+  "is_debug": false,
+  "api_timeout": 30.0
+}
+```
 
 
 ## ✍️ Author
