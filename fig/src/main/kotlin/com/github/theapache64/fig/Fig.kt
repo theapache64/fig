@@ -3,11 +3,13 @@ package com.github.theapache64.fig
 import com.github.theapache64.retrosheet.RetrosheetInterceptor
 import com.squareup.moshi.JsonDataException
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.io.File
 import kotlin.math.roundToInt
 
 /**
@@ -20,14 +22,17 @@ class FigException(message: String) : Exception(message)
 /**
  * Fig is a configuration management class that loads key-value pairs from Google Sheets.
  * It provides type-safe accessors for different data types and caches the data in memory
- * for efficient access.
+ * for efficient access. Also supports local fallback for improved reliability.
  *
  * @param sheetUrl The public URL of the Google Sheet containing configuration data.
  *                 The sheet should have two columns: 'key' and 'value'.
  *                 URLs ending with "edit?usp=sharing" will be automatically converted.
+ * @param localFallbackPath Optional path to a local JSON file to use as fallback when
+ *                          Google Sheets is unavailable. If null, no fallback is used.
  */
 class Fig(
-    private val sheetUrl : String,
+    private val sheetUrl: String? = null,
+    private val localFallbackPath: String? = null,
 ) {
     companion object {
         private const val KEY_MISSING_ERROR = "Required value 'key' missing at \$[1]"
@@ -50,6 +55,59 @@ class Fig(
      */
     @Throws(FigException::class, JsonDataException::class)
     suspend fun load() = withContext(Dispatchers.IO) {
+        val urlToUse = sheetUrl ?: throw FigException("Sheet URL not provided in constructor. Use Fig(sheetUrl) or load(sheetUrl)")
+        loadFromUrl(urlToUse)
+    }
+
+    /**
+     * Initializes the Fig instance by loading configuration data from a Google Sheet.
+     * This overload allows specifying the sheet URL at load time.
+     *
+     * @param sheetUrl The public URL of the Google Sheet containing configuration data
+     * @throws FigException If there are data type inconsistencies in the sheet or other configuration errors
+     * @throws JsonDataException If there are JSON parsing errors during data retrieval
+     *
+     * @sample
+     * ```kotlin
+     * val fig = Fig()
+     * fig.load("https://docs.google.com/spreadsheets/d/your-sheet-id/edit?usp=sharing")
+     * ```
+     */
+    @Throws(FigException::class, JsonDataException::class)
+    suspend fun load(sheetUrl: String) = withContext(Dispatchers.IO) {
+        loadFromUrl(sheetUrl)
+    }
+
+    private suspend fun loadFromUrl(url: String) {
+        try {
+            loadFromGoogleSheets(url)
+            println("Fig: Successfully loaded from Google Sheets")
+        } catch (e: Exception) {
+            println("Fig: Failed to load from Google Sheets: ${e.message}")
+            if (localFallbackPath != null) {
+                try {
+                    loadFromLocalFile(localFallbackPath)
+                    println("Fig: Successfully loaded from local fallback: $localFallbackPath")
+                } catch (fallbackError: Exception) {
+                    throw FigException("Failed to load from both Google Sheets and local fallback. Google Sheets error: ${e.message}, Local fallback error: ${fallbackError.message}")
+                }
+            } else {
+                // Re-throw original exception if no fallback is available
+                when (e) {
+                    is JsonDataException -> {
+                        if (e.message == KEY_MISSING_ERROR) {
+                            throw FigException("You can't use multiple data types. Use `=TO_TEXT()` to convert non-string values in your sheet")
+                        } else {
+                            throw FigException(e.message ?: "Unknown error")
+                        }
+                    }
+                    else -> throw FigException(e.message ?: "Failed to load configuration from Google Sheets")
+                }
+            }
+        }
+    }
+
+    private suspend fun loadFromGoogleSheets(url: String) {
         val retrosheetInterceptor =
             RetrosheetInterceptor.Builder().setLogging(true).addSheet("Sheet1", "key", "value").build()
 
@@ -59,28 +117,78 @@ class Fig(
         val moshi = Moshi.Builder()
             .build()
 
-        val url = if (sheetUrl.endsWith("edit?usp=sharing")) {
-            sheetUrl.replace("edit?usp=sharing", "")
+        val processedUrl = if (url.endsWith("edit?usp=sharing")) {
+            url.replace("edit?usp=sharing", "")
         } else {
-            sheetUrl
+            url
         }
 
         // Building retrofit client
         val figApi = Retrofit.Builder()
             // with baseUrl as sheet's public URL
-            .baseUrl(url) // Sheet's public URL
+            .baseUrl(processedUrl) // Sheet's public URL
             .client(okHttpClient).addConverterFactory(MoshiConverterFactory.create(moshi)).build()
             .create(FigApi::class.java)
 
+        inMemCache = figApi.getKeyValues().associate { it.key to it.value }
+        println("Fig: Loaded ${inMemCache?.size} configuration values from Google Sheets")
+    }
+
+    /**
+     * Loads configuration from a local JSON file.
+     * The JSON file should contain a map of key-value pairs.
+     *
+     * @param filePath Path to the local JSON file
+     * @throws FigException If the file cannot be read or parsed
+     */
+    private fun loadFromLocalFile(filePath: String) {
+        val file = File(filePath)
+        if (!file.exists()) {
+            throw FigException("Local fallback file not found: $filePath")
+        }
+
+        val moshi = Moshi.Builder().build()
+        val type = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+        val adapter = moshi.adapter<Map<String, Any?>>(type)
+
         try {
-            inMemCache = figApi.getKeyValues().associate { it.key to it.value }
-            println("QuickTag: Fig:init: $inMemCache")
-        } catch (e: JsonDataException) {
-            if (e.message == KEY_MISSING_ERROR) {
-                throw FigException("You can't use multiple data types. Use `=TO_TEXT()` to convert non-string values in your sheet")
-            } else {
-                throw FigException(e.message ?: "Unknown error")
-            }
+            val jsonContent = file.readText()
+            inMemCache = adapter.fromJson(jsonContent)
+            println("Fig: Loaded ${inMemCache?.size} configuration values from local file: $filePath")
+        } catch (e: Exception) {
+            throw FigException("Failed to parse local fallback file $filePath: ${e.message}")
+        }
+    }
+
+    /**
+     * Exports the current configuration to a local JSON file.
+     * This is useful for creating local fallback files from successfully loaded Google Sheets data.
+     *
+     * @param filePath Path where to save the JSON file
+     * @throws FigException If the configuration is not loaded or the file cannot be written
+     *
+     * @sample
+     * ```kotlin
+     * val fig = Fig("https://docs.google.com/spreadsheets/d/your-sheet-id/edit?usp=sharing")
+     * fig.load()
+     * fig.exportToLocalFile("config-backup.json")
+     * ```
+     */
+    fun exportToLocalFile(filePath: String) {
+        val config = inMemCache ?: throw FigException("Configuration not loaded. Call load() first.")
+
+        val moshi = Moshi.Builder().build()
+        val type = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+        val adapter = moshi.adapter<Map<String, Any?>>(type)
+
+        try {
+            val file = File(filePath)
+            file.parentFile?.mkdirs() // Create parent directories if needed
+            val jsonContent = adapter.toJson(config)
+            file.writeText(jsonContent)
+            println("Fig: Exported ${config.size} configuration values to $filePath")
+        } catch (e: Exception) {
+            throw FigException("Failed to export configuration to $filePath: ${e.message}")
         }
     }
 
