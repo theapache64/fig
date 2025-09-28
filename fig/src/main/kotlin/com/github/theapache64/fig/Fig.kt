@@ -44,6 +44,31 @@ class Fig(
         }
     }
 
+    private val figApi by lazy {
+        val retrosheetInterceptor =
+            RetrosheetInterceptor.Builder().setLogging(true).addSheet("Sheet1", "key", "value").build()
+
+        val okHttpClient = OkHttpClient.Builder()
+            .addInterceptor(retrosheetInterceptor) // and attach the interceptor
+            .build()
+
+        val moshi = Moshi.Builder()
+            .build()
+
+        val url = if (sheetUrl.endsWith("edit?usp=sharing")) {
+            sheetUrl.replace("edit?usp=sharing", "")
+        } else {
+            sheetUrl
+        }
+
+        // Building retrofit client
+        Retrofit.Builder()
+            // with baseUrl as sheet's public URL
+            .baseUrl(url) // Sheet's public URL
+            .client(okHttpClient).addConverterFactory(MoshiConverterFactory.create(moshi)).build()
+            .create(FigApi::class.java)
+    }
+
     private var cacheExpiryMap: MutableMap<String, Long> = mutableMapOf()
     private var inMemCache: Map<String, Any?>? = null
     var inMemCacheUpdatedAt: Long? = null
@@ -63,28 +88,6 @@ class Fig(
      */
     @Throws(FigException::class, JsonDataException::class)
     suspend fun load() = withContext(Dispatchers.IO) {
-        val retrosheetInterceptor =
-            RetrosheetInterceptor.Builder().setLogging(true).addSheet("Sheet1", "key", "value").build()
-
-        val okHttpClient = OkHttpClient.Builder().addInterceptor(retrosheetInterceptor) // and attach the interceptor
-            .build()
-
-        val moshi = Moshi.Builder()
-            .build()
-
-        val url = if (sheetUrl.endsWith("edit?usp=sharing")) {
-            sheetUrl.replace("edit?usp=sharing", "")
-        } else {
-            sheetUrl
-        }
-
-        // Building retrofit client
-        val figApi = Retrofit.Builder()
-            // with baseUrl as sheet's public URL
-            .baseUrl(url) // Sheet's public URL
-            .client(okHttpClient).addConverterFactory(MoshiConverterFactory.create(moshi)).build()
-            .create(FigApi::class.java)
-
         try {
             inMemCache = figApi.getKeyValues().associate { it.key to it.value }
             inMemCacheUpdatedAt = clock.now()
