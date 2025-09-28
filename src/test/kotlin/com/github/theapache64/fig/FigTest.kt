@@ -7,10 +7,8 @@ import kotlin.test.assertFailsWith
 
 class FigTest {
 
-    val fig = Fig().apply {
-        runBlocking {
-            load("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing")
-        }
+    val fig = Fig("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing").apply {
+        runBlocking { load() }
     }
 
     // String Tests
@@ -190,7 +188,7 @@ class FigTest {
     // Error Handling Tests
     @Test
     fun `uninitialized fig behavior`() {
-        val uninitializedFig = Fig()
+        val uninitializedFig = Fig("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing")
         // Should return default values and print warnings
         uninitializedFig.getString("any_key", "default").should.equal("default")
         uninitializedFig.getInt("any_key", 42).should.equal(42)
@@ -200,20 +198,20 @@ class FigTest {
 
     @Test
     fun `init with invalid URL should throw exception`() {
-        val invalidFig = Fig()
+        val invalidFig = Fig("https://invalid-url-that-doesnt-exist.com/")
         assertFailsWith<Exception> {
             runBlocking {
-                invalidFig.load("https://invalid-url-that-doesnt-exist.com/")
+                invalidFig.load()
             }
         }
     }
 
     @Test
     fun `init with malformed sheet URL`() {
-        val malformedFig = Fig()
+        val malformedFig = Fig("not-a-url")
         assertFailsWith<Exception> {
             runBlocking {
-                malformedFig.load("not-a-url")
+                malformedFig.load()
             }
         }
     }
