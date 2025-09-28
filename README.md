@@ -53,7 +53,7 @@ repositories {
 
 dependencies {
     // [latest version - i promise!]
-    implementation("com.github.theapache64:fig:0.1.1")
+    implementation("com.github.theapache64:fig:0.2.0")
 }
 ```
 
@@ -66,7 +66,7 @@ repositories {
 }
 dependencies {
     // [latest version - i promise!]
-    implementation 'com.github.theapache64:fig:0.1.1'
+    implementation 'com.github.theapache64:fig:0.2.0'
 }
  ```
 </details>
