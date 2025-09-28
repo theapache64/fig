@@ -39,7 +39,7 @@ class Fig(
         val element = Throwable().stackTrace[4]
         return "${this}@${element.fileName}:${element.className}:${element.methodName}:${element.lineNumber}".also {
             if (it.contains("Fig.kt:com.github.theapache64.fig")) {
-                throw IllegalStateException("calSiteKey generation failed for key '$this' ($it) Report this issue at https://github.com/theapache64/fig/issues")
+                throw IllegalStateException("callSiteKey generation failed for key '$this' ($it). Report this issue at https://github.com/theapache64/fig/issues")
             }
         }
     }
@@ -243,12 +243,22 @@ class Fig(
 
     private suspend fun <T> withCacheExpiry(key: String, timeToLive: Duration?, block: () -> T): T {
         if (timeToLive != null) {
-            refreshInMemCacheIfNeeded(key)
+            // more like refreshInMemCacheIfNeeded(key)
+            val callSiteKey = key.toCallSiteKeyOrThrow()
+            val currentTime = clock.now()
+            val expiryTime = cacheExpiryMap[callSiteKey]
+            if (expiryTime != null && currentTime >= expiryTime) {
+                load()
+            }
         }
         return block().also {
             // update expiry time
             if (timeToLive != null) {
-                updateInMemCacheExpiry(key, timeToLive)
+                // more like updateInMemCacheExpiry(key, timeToLive)
+                val callSiteKey = key.toCallSiteKeyOrThrow()
+                val currentTime = clock.now()
+                val newExpiryTime = currentTime + timeToLive.inWholeMilliseconds
+                cacheExpiryMap[callSiteKey] = newExpiryTime
             }
         }
     }
@@ -259,21 +269,6 @@ class Fig(
         } ?: defaultValue
     }
 
-    private fun updateInMemCacheExpiry(key: String, timeToLive: Duration) {
-        val callSiteKey = key.toCallSiteKeyOrThrow()
-        val currentTime = clock.now()
-        val newExpiryTime = currentTime + timeToLive.inWholeMilliseconds
-        cacheExpiryMap[callSiteKey] = newExpiryTime
-    }
-
-    private suspend fun refreshInMemCacheIfNeeded(key: String) {
-        val callSiteKey = key.toCallSiteKeyOrThrow()
-        val currentTime = clock.now()
-        val expiryTime = cacheExpiryMap[callSiteKey]
-        if (expiryTime != null && currentTime >= expiryTime) {
-            load()
-        }
-    }
 
     /**
      * Gets a configuration value as a Float.
