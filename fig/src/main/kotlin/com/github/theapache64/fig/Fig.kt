@@ -190,11 +190,52 @@ class Fig(
         } ?: defaultValue
     }
 
+    fun getLong(key: String, defaultValue: Long? = null): Long? {
+        return getAll()?.let { keyValues ->
+            getAll()?.getOrDefault(key, defaultValue)?.toString()?.toLongOrNull()
+        } ?: defaultValue
+    }
+
     suspend fun getBoolean(key: String, defaultValue: Boolean? = null, timeToLive: Duration? = null): Boolean? {
         return withCacheExpiry(
             key = key,
             timeToLive = timeToLive,
         ) { getBoolean(key, defaultValue) }
+    }
+
+    suspend fun getString(key: String, defaultValue: String? = null, timeToLive: Duration? = null): String? {
+        return withCacheExpiry(
+            key = key,
+            timeToLive = timeToLive,
+        ) { getString(key, defaultValue) }
+    }
+
+    suspend fun getInt(key: String, defaultValue: Int? = null, timeToLive: Duration? = null): Int? {
+        return withCacheExpiry(
+            key = key,
+            timeToLive = timeToLive,
+        ) { getInt(key, defaultValue) }
+    }
+
+    suspend fun getDouble(key: String, defaultValue: Double? = null, timeToLive: Duration? = null): Double? {
+        return withCacheExpiry(
+            key = key,
+            timeToLive = timeToLive,
+        ) { getDouble(key, defaultValue) }
+    }
+
+    suspend fun getLong(key: String, defaultValue: Long? = null, timeToLive: Duration? = null): Long? {
+        return withCacheExpiry(
+            key = key,
+            timeToLive = timeToLive,
+        ) { getLong(key, defaultValue) }
+    }
+
+    suspend fun getFloat(key: String, defaultValue: Float? = null, timeToLive: Duration? = null): Float? {
+        return withCacheExpiry(
+            key = key,
+            timeToLive = timeToLive,
+        ) { getFloat(key, defaultValue) }
     }
 
     private suspend fun <T> withCacheExpiry(key: String, timeToLive: Duration?, block: () -> T): T {
