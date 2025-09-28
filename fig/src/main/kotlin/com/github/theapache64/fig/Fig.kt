@@ -6,7 +6,6 @@ import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import org.jetbrains.annotations.ApiStatus
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import kotlin.math.roundToInt
@@ -30,7 +29,7 @@ class FigException(message: String) : Exception(message)
  */
 class Fig(
     private val sheetUrl: String,
-    private val clock : Clock = SystemClock() 
+    private val clock: Clock = SystemClock()
 ) {
     companion object {
         private const val KEY_MISSING_ERROR = "Required value 'key' missing at \$[1]"
@@ -191,13 +190,18 @@ class Fig(
         } ?: defaultValue
     }
 
-
-    @ApiStatus.Experimental
     suspend fun getBoolean(key: String, defaultValue: Boolean? = null, timeToLive: Duration? = null): Boolean? {
+        return withCacheExpiry(
+            key = key,
+            timeToLive = timeToLive,
+        ) { getBoolean(key, defaultValue) }
+    }
+
+    private suspend fun <T> withCacheExpiry(key: String, timeToLive: Duration?, block: () -> T): T {
         if (timeToLive != null) {
             refreshInMemCacheIfNeeded(key)
         }
-        return getBoolean(key, defaultValue).also {
+        return block().also {
             // update expiry time
             if (timeToLive != null) {
                 updateInMemCacheExpiry(key, timeToLive)
