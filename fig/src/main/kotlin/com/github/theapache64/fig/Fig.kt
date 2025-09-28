@@ -6,9 +6,11 @@ import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import org.jetbrains.annotations.ApiStatus
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import kotlin.math.roundToInt
+import kotlin.time.Duration
 
 /**
  * Custom exception thrown when Fig encounters configuration or data errors.
@@ -27,13 +29,25 @@ class FigException(message: String) : Exception(message)
  *                 URLs ending with "edit?usp=sharing" will be automatically converted.
  */
 class Fig(
-    private val sheetUrl : String,
+    private val sheetUrl: String,
+    private val clock : Clock = SystemClock() 
 ) {
     companion object {
         private const val KEY_MISSING_ERROR = "Required value 'key' missing at \$[1]"
     }
 
+    private fun String.toCallSiteKeyOrThrow(): String {
+        val element = Throwable().stackTrace[4]
+        return "${this}@${element.fileName}:${element.className}:${element.methodName}:${element.lineNumber}".also {
+            if (it.contains("Fig.kt:com.github.theapache64.fig")) {
+                throw IllegalStateException("calSiteKey generation failed for key '$this' ($it) Report this issue at https://github.com/theapache64/fig/issues")
+            }
+        }
+    }
+
+    private var cacheExpiryMap: MutableMap<String, Long> = mutableMapOf()
     private var inMemCache: Map<String, Any?>? = null
+    var inMemCacheUpdatedAt: Long? = null
 
     /**
      * Initializes the Fig instance by loading configuration data from a Google Sheet.
@@ -74,6 +88,7 @@ class Fig(
 
         try {
             inMemCache = figApi.getKeyValues().associate { it.key to it.value }
+            inMemCacheUpdatedAt = clock.now()
             println("QuickTag: Fig:init: $inMemCache")
         } catch (e: JsonDataException) {
             if (e.message == KEY_MISSING_ERROR) {
@@ -176,24 +191,40 @@ class Fig(
         } ?: defaultValue
     }
 
-    /**
-     * Gets a configuration value as a Boolean.
-     * Accepts "true", "false" (case-insensitive). Other values will return the default.
-     *
-     * @param key The configuration key to retrieve
-     * @param defaultValue The default value to return if the key is not found or cannot be parsed (default: null)
-     * @return The configuration value as a Boolean, or the default value if not found or invalid
-     *
-     * @sample
-     * ```kotlin
-     * val debugMode = fig.getBoolean("debug_enabled", false)
-     * val featureFlag = fig.getBoolean("new_feature_enabled") // returns null if not found
-     * ```
-     */
+
+    @ApiStatus.Experimental
+    suspend fun getBoolean(key: String, defaultValue: Boolean? = null, timeToLive: Duration? = null): Boolean? {
+        if (timeToLive != null) {
+            refreshInMemCacheIfNeeded(key)
+        }
+        return getBoolean(key, defaultValue).also {
+            // update expiry time
+            if (timeToLive != null) {
+                updateInMemCacheExpiry(key, timeToLive)
+            }
+        }
+    }
+
     fun getBoolean(key: String, defaultValue: Boolean? = null): Boolean? {
         return getAll()?.let { keyValues ->
             keyValues.getOrDefault(key, defaultValue)?.toString()?.toBooleanStrictOrNull()
         } ?: defaultValue
+    }
+
+    private fun updateInMemCacheExpiry(key: String, timeToLive: Duration) {
+        val callSiteKey = key.toCallSiteKeyOrThrow()
+        val currentTime = clock.now()
+        val newExpiryTime = currentTime + timeToLive.inWholeMilliseconds
+        cacheExpiryMap[callSiteKey] = newExpiryTime
+    }
+
+    private suspend fun refreshInMemCacheIfNeeded(key: String) {
+        val callSiteKey = key.toCallSiteKeyOrThrow()
+        val currentTime = clock.now()
+        val expiryTime = cacheExpiryMap[callSiteKey]
+        if (expiryTime != null && currentTime >= expiryTime) {
+            load()
+        }
     }
 
     /**

@@ -1,15 +1,30 @@
 package com.github.theapache64.fig
 
 import com.github.theapache64.expekt.should
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
+import kotlin.time.Duration.Companion.seconds
 
 class FigTest {
 
-    val fig = Fig("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing").apply {
-        runBlocking { load() }
-    }
+    private val testScheduler = TestCoroutineScheduler()
+    private val testDispatcher = StandardTestDispatcher(testScheduler)
+    private val testScope = TestScope(testDispatcher)
+
+    val fig =
+        Fig(
+            "https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing",
+            TestClock(testScope.testScheduler)
+        ).apply {
+            runBlocking { load() }
+        }
 
     // String Tests
     @Test
@@ -47,6 +62,32 @@ class FigTest {
     @Test
     fun `getBoolean with false value`() {
         fig.getBoolean("is_dead", null).should.equal(false)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `getBoolean with TTL`() {
+        testScope.runTest {
+            val firstUpdate = fig.inMemCacheUpdatedAt
+            require(firstUpdate != null) { "Cache update time should not be null" }
+            repeat(2) { i ->
+                fig.getBoolean("is_alive", null, 10.seconds).should.equal(true)
+                testScope.testScheduler.advanceTimeBy(20.seconds)
+                when (i) {
+                    0 -> require(fig.inMemCacheUpdatedAt == firstUpdate) {
+                        "Cache should not be refreshed before TTL"
+                    }
+
+                    1 -> require(fig.inMemCacheUpdatedAt != firstUpdate) {
+                        "Cache should be refreshed after TTL"
+                    }
+
+                    else -> {
+                        error("Unreachable")
+                    }
+                }
+            }
+        }
     }
 
     @Test
@@ -188,7 +229,8 @@ class FigTest {
     // Error Handling Tests
     @Test
     fun `uninitialized fig behavior`() {
-        val uninitializedFig = Fig("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing")
+        val uninitializedFig =
+            Fig("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing")
         // Should return default values and print warnings
         uninitializedFig.getString("any_key", "default").should.equal("default")
         uninitializedFig.getInt("any_key", 42).should.equal(42)
