@@ -27,7 +27,7 @@ class FigException(message: String) : Exception(message)
  *                 URLs ending with "edit?usp=sharing" will be automatically converted.
  */
 class Fig(
-    private val sheetUrl : String,
+    private val sheetUrl : String = "",
 ) {
     companion object {
         private const val KEY_MISSING_ERROR = "Required value 'key' missing at \$[1]"
@@ -50,6 +50,10 @@ class Fig(
      */
     @Throws(FigException::class, JsonDataException::class)
     suspend fun load() = withContext(Dispatchers.IO) {
+        if (sheetUrl.isEmpty()) {
+            throw FigException("No sheet URL provided. Use Fig(sheetUrl) constructor or load(url) method.")
+        }
+        
         val retrosheetInterceptor =
             RetrosheetInterceptor.Builder().setLogging(true).addSheet("Sheet1", "key", "value").build()
 
@@ -69,6 +73,50 @@ class Fig(
         val figApi = Retrofit.Builder()
             // with baseUrl as sheet's public URL
             .baseUrl(url) // Sheet's public URL
+            .client(okHttpClient).addConverterFactory(MoshiConverterFactory.create(moshi)).build()
+            .create(FigApi::class.java)
+
+        try {
+            inMemCache = figApi.getKeyValues().associate { it.key to it.value }
+            println("QuickTag: Fig:init: $inMemCache")
+        } catch (e: JsonDataException) {
+            if (e.message == KEY_MISSING_ERROR) {
+                throw FigException("You can't use multiple data types. Use `=TO_TEXT()` to convert non-string values in your sheet")
+            } else {
+                throw FigException(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    /**
+     * Initializes the Fig instance by loading configuration data from a Google Sheet.
+     * This overload allows specifying the sheet URL at load time.
+     *
+     * @param url The public URL of the Google Sheet containing configuration data
+     * @throws FigException If there are data type inconsistencies in the sheet or other configuration errors
+     * @throws JsonDataException If there are JSON parsing errors during data retrieval
+     */
+    @Throws(FigException::class, JsonDataException::class)
+    suspend fun load(url: String) = withContext(Dispatchers.IO) {
+        val retrosheetInterceptor =
+            RetrosheetInterceptor.Builder().setLogging(true).addSheet("Sheet1", "key", "value").build()
+
+        val okHttpClient = OkHttpClient.Builder().addInterceptor(retrosheetInterceptor) // and attach the interceptor
+            .build()
+
+        val moshi = Moshi.Builder()
+            .build()
+
+        val processedUrl = if (url.endsWith("edit?usp=sharing")) {
+            url.replace("edit?usp=sharing", "")
+        } else {
+            url
+        }
+
+        // Building retrofit client
+        val figApi = Retrofit.Builder()
+            // with baseUrl as sheet's public URL
+            .baseUrl(processedUrl) // Sheet's public URL
             .client(okHttpClient).addConverterFactory(MoshiConverterFactory.create(moshi)).build()
             .create(FigApi::class.java)
 
@@ -172,7 +220,7 @@ class Fig(
      */
     fun getInt(key: String, defaultValue: Int? = null): Int? {
         return getAll()?.let { keyValues ->
-            getAll()?.getOrDefault(key, defaultValue)?.toString()?.toDoubleOrNull()?.roundToInt()
+            keyValues.getOrDefault(key, defaultValue)?.toString()?.toDoubleOrNull()?.roundToInt()
         } ?: defaultValue
     }
 
