@@ -6,9 +6,8 @@ suspend fun main() {
     val fig = Fig("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing")
     try {
         fig.load()
-    }catch (e : FigException) {
+        println("Fruit is '${fig.getString("fruit", null, 5.seconds)}'")
+    } catch (e: FigException) {
         e.printStackTrace()
     }
-
-    println("Fruit is '${fig.getString("fruit", null, 5.seconds)}'")
 }
