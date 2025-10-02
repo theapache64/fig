@@ -4,7 +4,7 @@ plugins {
     id("maven-publish")
 }
 
-group = "com.github.theapache64"
+group = "com.github.theapache64.fig"
 // [latest version - i promise!]
 version = "0.2.0"
 
