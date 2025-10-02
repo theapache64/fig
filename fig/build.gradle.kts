@@ -76,8 +76,6 @@ publishing {
 
 
 dependencies {
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-
     // retrosheet
     implementation("com.github.theapache64:retrosheet:2.0.1")
 
@@ -90,8 +88,6 @@ dependencies {
 
     // coroutines core
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
-
-
 }
 
 tasks.test {
