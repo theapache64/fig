@@ -35,18 +35,13 @@ class Fig(
         private const val KEY_MISSING_ERROR = "Required value 'key' missing at \$[1]"
     }
 
-    private fun String.toCallSiteKeyOrThrow(): String {
-        val element = Throwable().stackTrace[4]
-        return "${this}@${element.fileName}:${element.className}:${element.methodName}:${element.lineNumber}".also {
-            if (it.contains("Fig.kt:com.github.theapache64.fig")) {
-                throw IllegalStateException("callSiteKey generation failed for key '$this' ($it). Report this issue at https://github.com/theapache64/fig/issues")
-            }
-        }
+    private fun String.toCallSiteKeyOrThrow(tll: Duration): String {
+        return "${this}:${tll.inWholeMilliseconds}"
     }
 
     private val figApi by lazy {
         val retrosheetInterceptor =
-            RetrosheetInterceptor.Builder().setLogging(true).addSheet("Sheet1", "key", "value").build()
+            RetrosheetInterceptor.Builder().addSheet("Sheet1", "key", "value").build()
 
         val okHttpClient = OkHttpClient.Builder()
             .addInterceptor(retrosheetInterceptor) // and attach the interceptor
@@ -244,7 +239,7 @@ class Fig(
     private suspend fun <T> withCacheExpiry(key: String, timeToLive: Duration?, block: () -> T): T {
         if (timeToLive != null) {
             // more like refreshInMemCacheIfNeeded(key)
-            val callSiteKey = key.toCallSiteKeyOrThrow()
+            val callSiteKey = key.toCallSiteKeyOrThrow(timeToLive)
             val currentTime = clock.now()
             val expiryTime = cacheExpiryMap[callSiteKey]
             if (expiryTime != null && currentTime >= expiryTime) {
@@ -255,7 +250,7 @@ class Fig(
             // update expiry time
             if (timeToLive != null) {
                 // more like updateInMemCacheExpiry(key, timeToLive)
-                val callSiteKey = key.toCallSiteKeyOrThrow()
+                val callSiteKey = key.toCallSiteKeyOrThrow(timeToLive)
                 val currentTime = clock.now()
                 val newExpiryTime = currentTime + timeToLive.inWholeMilliseconds
                 cacheExpiryMap[callSiteKey] = newExpiryTime

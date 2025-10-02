@@ -1,4 +1,4 @@
-package com.github.theapache64.fig
+package com.github.theapache64.fig.test
 
 import com.github.theapache64.expekt.should
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,7 +19,7 @@ class FigTest {
     private val testScope = TestScope(testDispatcher)
 
     val fig =
-        Fig(
+        _root_ide_package_.com.github.theapache64.fig.Fig(
             "https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing",
             TestClock(testScope.testScheduler)
         ).apply {
@@ -230,7 +230,7 @@ class FigTest {
     @Test
     fun `uninitialized fig behavior`() {
         val uninitializedFig =
-            Fig("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing")
+            _root_ide_package_.com.github.theapache64.fig.Fig("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing")
         // Should return default values and print warnings
         uninitializedFig.getString("any_key", "default").should.equal("default")
         uninitializedFig.getInt("any_key", 42).should.equal(42)
@@ -240,7 +240,7 @@ class FigTest {
 
     @Test
     fun `init with invalid URL should throw exception`() {
-        val invalidFig = Fig("https://invalid-url-that-doesnt-exist.com/")
+        val invalidFig = _root_ide_package_.com.github.theapache64.fig.Fig("https://invalid-url-that-doesnt-exist.com/")
         assertFailsWith<Exception> {
             runBlocking {
                 invalidFig.load()
@@ -250,7 +250,7 @@ class FigTest {
 
     @Test
     fun `init with malformed sheet URL`() {
-        val malformedFig = Fig("not-a-url")
+        val malformedFig = _root_ide_package_.com.github.theapache64.fig.Fig("not-a-url")
         assertFailsWith<Exception> {
             runBlocking {
                 malformedFig.load()
