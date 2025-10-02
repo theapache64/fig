@@ -86,7 +86,6 @@ class Fig(
         try {
             inMemCache = figApi.getKeyValues().associate { it.key to it.value }
             inMemCacheUpdatedAt = clock.now()
-            println("QuickTag: Fig:init: $inMemCache")
         } catch (e: JsonDataException) {
             if (e.message == KEY_MISSING_ERROR) {
                 throw FigException("You can't use multiple data types. Use `=TO_TEXT()` to convert non-string values in your sheet")

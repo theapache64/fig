@@ -7,7 +7,7 @@ suspend fun main() {
     try {
         fig.load() // one time load
         println("Fruit is '${fig.getString("fruit", null)}'") // without TTL
-        println("Fruit is '${fig.getString("fruit", null, 5.seconds)}'") // with 5 seconds TTL
+        println("Fruit is '${fig.getString("fruit", null, 5.seconds)}'") // with 5 seconds TTL 🆕 🎊
     } catch (e: FigException) {
         e.printStackTrace()
     }
