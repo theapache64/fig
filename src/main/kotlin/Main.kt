@@ -10,7 +10,5 @@ suspend fun main() {
         e.printStackTrace()
     }
 
-    run {
-        println("Fruit is '${fig.getString("fruit", null, 5.seconds)}'")
-    }
+    println("Fruit is '${fig.getString("fruit", null, 5.seconds)}'")
 }
