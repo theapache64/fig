@@ -5,8 +5,9 @@ import kotlin.time.Duration.Companion.seconds
 suspend fun main() {
     val fig = Fig("https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing")
     try {
-        fig.load()
-        println("Fruit is '${fig.getString("fruit", null, 5.seconds)}'")
+        fig.load() // one time load
+        println("Fruit is '${fig.getString("fruit", null)}'") // without TTL
+        println("Fruit is '${fig.getString("fruit", null, 5.seconds)}'") // with 5 seconds TTL
     } catch (e: FigException) {
         e.printStackTrace()
     }
