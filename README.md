@@ -92,34 +92,28 @@ Fruit is 'apple'
 
 ## ⏱️ Cache Management with TTL (Time To Live)
 
-All `getXXX` methods support an optional `timeToLive` parameter that allows you to control cache freshness. When a TTL is specified, Fig will automatically refresh the cache from the Google Sheet when the specified duration has elapsed.
+Fig supports automatic cache refresh through a global TTL (Time To Live) parameter. When specified, Fig will automatically refresh the entire cache from the Google Sheet in the background when the specified duration has elapsed.
 
-### Available Methods with TTL Support
+### Setting Cache TTL
 
-All data retrieval methods have suspend versions with TTL support:
-- `suspend fun getString(key: String, defaultValue: String? = null, timeToLive: Duration? = null)`
-- `suspend fun getInt(key: String, defaultValue: Int? = null, timeToLive: Duration? = null)`
-- `suspend fun getLong(key: String, defaultValue: Long? = null, timeToLive: Duration? = null)`
-- `suspend fun getFloat(key: String, defaultValue: Float? = null, timeToLive: Duration? = null)`
-- `suspend fun getDouble(key: String, defaultValue: Double? = null, timeToLive: Duration? = null)`
-- `suspend fun getBoolean(key: String, defaultValue: Boolean? = null, timeToLive: Duration? = null)`
-
-### Usage Example
+You can specify a cache TTL when creating the Fig instance:
 
 ```kotlin
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 suspend fun main() {
-    val fig = Fig(sheetUrl = "YOUR-GOOGLE-SHEET-URL-GOES-HERE")
+    // Cache will auto-refresh every 5 minutes
+    val fig = Fig(
+        sheetUrl = "YOUR-GOOGLE-SHEET-URL-GOES-HERE",
+        cacheTTL = 5.minutes
+    )
     fig.load()
-    
-    // Cache will be refreshed every 5 minutes for this specific call site
-    val apiKey = fig.getString("api_key", null, timeToLive = 5.minutes)
-    
-    // Cache will be refreshed every 30 seconds for this specific call site
-    val isFeatureEnabled = fig.getBoolean("feature_flag", false, timeToLive = 30.seconds)
-    
+
+    // All subsequent calls use the cached data
+    val apiKey = fig.getString("api_key", null)
+    val isFeatureEnabled = fig.getBoolean("feature_flag", false)
+
     println("API Key: $apiKey")
     println("Feature Enabled: $isFeatureEnabled")
 }
@@ -127,21 +121,30 @@ suspend fun main() {
 
 ### How TTL Works
 
-- **Call-site specific**: Each call site (unique location in your code) maintains its own TTL timer
-- **Automatic refresh**: When the TTL expires, Fig automatically fetches fresh data from the Google Sheet
-- **No manual intervention**: You don't need to manually check or refresh the cache
-- **Coroutine-based**: TTL methods are suspend functions and must be called from a coroutine context
+- **Global cache**: The TTL applies to the entire cache, not individual keys
+- **Automatic background refresh**: When the TTL expires, Fig automatically fetches fresh data from the Google Sheet in the background
+- **Non-blocking**: Cache refreshes happen asynchronously without blocking your data access
+- **Default behavior**: If no TTL is specified, the cache never expires (`Duration.INFINITE`)
 
-**Example:**
+### Monitoring Cache Status
+
+Fig exposes two public properties to help you monitor cache status:
+
 ```kotlin
-// Call site A - refreshes every 10 seconds
-val value1 = fig.getString("key", null, timeToLive = 10.seconds)
+val fig = Fig(sheetUrl = "YOUR-URL", cacheTTL = 5.minutes)
+fig.load()
 
-// Call site B - refreshes every 1 minute (independent from call site A)
-val value2 = fig.getString("key", null, timeToLive = 1.minutes)
+// Check when the cache was last updated (timestamp in milliseconds)
+val lastUpdate: Long? = fig.inMemCacheUpdatedAt
+
+// Check if cache is currently being refreshed
+val isRefreshing: Boolean = fig.isRefreshing
 ```
 
-Even though both calls request the same key, they maintain separate TTL timers based on their call site location in the code.
+These properties are useful for:
+- Displaying cache freshness in your UI
+- Debugging cache behavior
+- Implementing custom cache management logic
 
 ## ▶️ Video Tutorial
 If you want to see this library in practice, you can check out this video tutorial on YouTube: https://youtu.be/E8X94pCJ2zs 
