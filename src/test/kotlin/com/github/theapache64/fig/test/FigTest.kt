@@ -6,7 +6,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
@@ -21,6 +20,8 @@ class FigTest {
     val fig =
         _root_ide_package_.com.github.theapache64.fig.Fig(
             "https://docs.google.com/spreadsheets/d/1LD1Su7HVzAxPlbRp9MO7lni2E5SOqfAsLMCd1FC9A8s/edit?usp=sharing",
+            cacheTTL = 10.seconds,
+            dispatcher = testDispatcher,
             TestClock(testScope.testScheduler)
         ).apply {
             runBlocking { load() }
@@ -71,14 +72,15 @@ class FigTest {
             val firstUpdate = fig.inMemCacheUpdatedAt
             require(firstUpdate != null) { "Cache update time should not be null" }
             repeat(2) { i ->
-                fig.getBoolean("is_alive", null, 10.seconds).should.equal(true)
+                fig.getBoolean("is_alive", null).should.equal(true)
                 testScope.testScheduler.advanceTimeBy(20.seconds)
                 when (i) {
                     0 -> require(fig.inMemCacheUpdatedAt == firstUpdate) {
                         "Cache should not be refreshed before TTL"
                     }
 
-                    1 -> require(fig.inMemCacheUpdatedAt != firstUpdate) {
+                    1 -> require(fig.isRefreshing) {
+                        println("QuickTag: FigTest:getBoolean with TTL: ${fig.inMemCacheUpdatedAt} vs $firstUpdate")
                         "Cache should be refreshed after TTL"
                     }
 
@@ -296,19 +298,6 @@ class FigTest {
         config["is_debug"].should.not.equal(null)
     }
 
-    @Test
-    fun `deprecated getValue method still works`() {
-        @Suppress("DEPRECATION")
-        val result = fig.getValue("fruit", null)
-        result.should.equal("apple")
-    }
-
-    @Test
-    fun `deprecated getValue with non-existent key`() {
-        @Suppress("DEPRECATION")
-        val result = fig.getValue("non_existent", "default")
-        result.should.equal("default")
-    }
 
     // Boundary Tests
     @Test

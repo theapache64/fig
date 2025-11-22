@@ -70,8 +70,8 @@ class Fig(
     }
 
     private var inMemCache: Map<String, Any?>? = null
-    private var inMemCacheUpdatedAt: Long? = null
-    private var isRefreshing = false
+    var inMemCacheUpdatedAt: Long? = null
+    var isRefreshing = false
 
     /**
      * Initializes the Fig instance by loading configuration data from a Google Sheet.
