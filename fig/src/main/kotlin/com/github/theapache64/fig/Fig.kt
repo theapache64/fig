@@ -3,7 +3,11 @@ package com.github.theapache64.fig
 import com.github.theapache64.retrosheet.RetrosheetInterceptor
 import com.squareup.moshi.JsonDataException
 import com.squareup.moshi.Moshi
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -29,15 +33,16 @@ class FigException(message: String) : Exception(message)
  */
 class Fig(
     private val sheetUrl: String,
+    private val cacheTTL : Duration = Duration.INFINITE,
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val clock: Clock = SystemClock()
 ) {
+    private val scope = CoroutineScope(dispatcher + SupervisorJob())
+    
     companion object {
         private const val KEY_MISSING_ERROR = "Required value 'key' missing at \$[1]"
     }
-
-    private fun String.toCallSiteKeyOrThrow(tll: Duration): String {
-        return "${this}:${tll.inWholeMilliseconds}"
-    }
+    
 
     private val figApi by lazy {
         val retrosheetInterceptor =
@@ -64,9 +69,9 @@ class Fig(
             .create(FigApi::class.java)
     }
 
-    private var cacheExpiryMap: MutableMap<String, Long> = mutableMapOf()
     private var inMemCache: Map<String, Any?>? = null
-    var inMemCacheUpdatedAt: Long? = null
+    private var inMemCacheUpdatedAt: Long? = null
+    private var isRefreshing = false
 
     /**
      * Initializes the Fig instance by loading configuration data from a Google Sheet.
@@ -95,27 +100,7 @@ class Fig(
         }
     }
 
-    /**
-     * Gets a configuration value as a string.
-     *
-     * @deprecated Use one of the type-specific methods like getString(), getInt(), getFloat(),
-     *             getDouble(), or getBoolean() for better type safety.
-     * @param key The configuration key to retrieve
-     * @param defaultValue The default value to return if the key is not found
-     * @return The configuration value as a String, or the default value if not found
-     */
-    @Deprecated(
-        message = "Use one of getString(), getInt(), getFloat(), getDouble() or getBoolean()",
-        replaceWith = ReplaceWith("getString(key, defaultValue)")
-    )
-    fun getValue(key: String, defaultValue: String?): String? {
-        return inMemCache.let { keyValues ->
-            if (keyValues == null) {
-                println("WARNING: Fig.init not called, failed or not completed yet")
-            }
-            (keyValues?.get(key) ?: defaultValue) as? String
-        }
-    }
+
 
     /**
      * Returns all loaded configuration data as a map.
@@ -135,6 +120,7 @@ class Fig(
         if (!isLoaded()) {
             println("WARNING: Fig.init not called, failed or not completed yet")
         }
+        checkCacheExpiry()
         return inMemCache
     }
 
@@ -161,10 +147,34 @@ class Fig(
      * ```
      */
     fun getString(key: String, defaultValue: String? = null): String? {
-        return getAll()?.let { keyValues ->
-            val value = keyValues.getOrDefault(key, defaultValue)
-            value?.toString()
-        } ?: defaultValue
+        return getAll()?.getOrDefault(key, defaultValue)?.toString() ?: defaultValue
+    }
+
+    private fun checkCacheExpiry() {
+        if (cacheTTL == Duration.INFINITE) {
+            return
+        }
+
+        if (isRefreshing) {
+            return
+        }
+
+        val now = clock.now()
+        val lastUpdated = inMemCacheUpdatedAt ?: return
+        if ((now - lastUpdated) > cacheTTL.inWholeMilliseconds) {
+            // Invalidate cache
+            scope.launch {
+                isRefreshing = true
+                try {
+                    load()
+                }catch (e: Exception) {
+                    // Swallowing exception intentionally
+                    e.printStackTrace()
+                }finally{
+                    isRefreshing = false
+                }
+            }
+        }
     }
 
     /**
@@ -182,85 +192,41 @@ class Fig(
      * ```
      */
     fun getInt(key: String, defaultValue: Int? = null): Int? {
-        return getAll()?.let { keyValues ->
-            getAll()?.getOrDefault(key, defaultValue)?.toString()?.toDoubleOrNull()?.roundToInt()
-        } ?: defaultValue
+        return getAll()?.getOrDefault(key, defaultValue)?.toString()?.toDoubleOrNull()?.roundToInt() ?: defaultValue
     }
 
+    /**
+     * Gets a configuration value as a Long.
+     *
+     * @param key The configuration key to retrieve
+     * @param defaultValue The default value to return if the key is not found or cannot be parsed (default: null)
+     * @return The configuration value as a Long, or the default value if not found or invalid
+     *
+     * @sample
+     * ```kotlin
+     * val maxFileSize = fig.getLong("max_file_size", 1048576L)
+     * val userId = fig.getLong("default_user_id") // returns null if not found
+     * ```
+     */
     fun getLong(key: String, defaultValue: Long? = null): Long? {
-        return getAll()?.let { keyValues ->
-            getAll()?.getOrDefault(key, defaultValue)?.toString()?.toLongOrNull()
-        } ?: defaultValue
+        return getAll()?.getOrDefault(key, defaultValue)?.toString()?.toLongOrNull() ?: defaultValue
     }
 
-    suspend fun getBoolean(key: String, defaultValue: Boolean? = null, timeToLive: Duration? = null): Boolean? {
-        return withCacheExpiry(
-            key = key,
-            timeToLive = timeToLive,
-        ) { getBoolean(key, defaultValue) }
-    }
-
-    suspend fun getString(key: String, defaultValue: String? = null, timeToLive: Duration? = null): String? {
-        return withCacheExpiry(
-            key = key,
-            timeToLive = timeToLive,
-        ) { getString(key, defaultValue) }
-    }
-
-    suspend fun getInt(key: String, defaultValue: Int? = null, timeToLive: Duration? = null): Int? {
-        return withCacheExpiry(
-            key = key,
-            timeToLive = timeToLive,
-        ) { getInt(key, defaultValue) }
-    }
-
-    suspend fun getDouble(key: String, defaultValue: Double? = null, timeToLive: Duration? = null): Double? {
-        return withCacheExpiry(
-            key = key,
-            timeToLive = timeToLive,
-        ) { getDouble(key, defaultValue) }
-    }
-
-    suspend fun getLong(key: String, defaultValue: Long? = null, timeToLive: Duration? = null): Long? {
-        return withCacheExpiry(
-            key = key,
-            timeToLive = timeToLive,
-        ) { getLong(key, defaultValue) }
-    }
-
-    suspend fun getFloat(key: String, defaultValue: Float? = null, timeToLive: Duration? = null): Float? {
-        return withCacheExpiry(
-            key = key,
-            timeToLive = timeToLive,
-        ) { getFloat(key, defaultValue) }
-    }
-
-    private suspend fun <T> withCacheExpiry(key: String, timeToLive: Duration?, block: () -> T): T {
-        if (timeToLive != null) {
-            // more like refreshInMemCacheIfNeeded(key)
-            val callSiteKey = key.toCallSiteKeyOrThrow(timeToLive)
-            val currentTime = clock.now()
-            val expiryTime = cacheExpiryMap[callSiteKey]
-            if (expiryTime != null && currentTime >= expiryTime) {
-                load()
-            }
-        }
-        return block().also {
-            // update expiry time
-            if (timeToLive != null) {
-                // more like updateInMemCacheExpiry(key, timeToLive)
-                val callSiteKey = key.toCallSiteKeyOrThrow(timeToLive)
-                val currentTime = clock.now()
-                val newExpiryTime = currentTime + timeToLive.inWholeMilliseconds
-                cacheExpiryMap[callSiteKey] = newExpiryTime
-            }
-        }
-    }
-
+    /**
+     * Gets a configuration value as a Boolean.
+     *
+     * @param key The configuration key to retrieve
+     * @param defaultValue The default value to return if the key is not found or cannot be parsed (default: null)
+     * @return The configuration value as a Boolean, or the default value if not found or invalid
+     *
+     * @sample
+     * ```kotlin
+     * val isFeatureEnabled = fig.getBoolean("feature_enabled", false)
+     * val isDebugMode = fig.getBoolean("debug_mode") // returns null if not found
+     * ```
+     */
     fun getBoolean(key: String, defaultValue: Boolean? = null): Boolean? {
-        return getAll()?.let { keyValues ->
-            keyValues.getOrDefault(key, defaultValue)?.toString()?.toBooleanStrictOrNull()
-        } ?: defaultValue
+        return getAll()?.getOrDefault(key, defaultValue)?.toString()?.toBooleanStrictOrNull() ?: defaultValue
     }
 
 
@@ -278,9 +244,7 @@ class Fig(
      * ```
      */
     fun getFloat(key: String, defaultValue: Float? = null): Float? {
-        return getAll()?.let { keyValues ->
-            keyValues.getOrDefault(key, defaultValue)?.toString()?.toFloatOrNull()
-        } ?: defaultValue
+        return getAll()?.getOrDefault(key, defaultValue)?.toString()?.toFloatOrNull() ?: defaultValue
     }
 
     /**
@@ -297,8 +261,6 @@ class Fig(
      * ```
      */
     fun getDouble(key: String, defaultValue: Double? = null): Double? {
-        return getAll()?.let { keyValues ->
-            keyValues.getOrDefault(key, defaultValue)?.toString()?.toDoubleOrNull()
-        } ?: defaultValue
+        return getAll()?.getOrDefault(key, defaultValue)?.toString()?.toDoubleOrNull() ?: defaultValue
     }
 }
